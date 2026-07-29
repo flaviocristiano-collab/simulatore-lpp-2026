@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Simulatore LPP Svizzera 2026 — Completo</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  
+<base target="_blank">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div id="lpp-app">
+  <div class="header">
+    <h2>🇨🇭 Simulatore LPP 2026 — Completo</h2>
+    <p>Previdenza Professionale Svizzera — Dati aggiornati al 1° gennaio 2026</p>
+  </div>
+
+  <div class="grid-3" style="margin-bottom: 20px;">
+    <div class="card" style="grid-column: 1 / -1; padding: 0; overflow: hidden;">
+      
+
+      <div style="padding: 18px 20px; border-bottom: 1px solid #e2e8f0; display: flex; align-items: center; justify-content: space-between;">
+        <h3 style="margin: 0; color: #1e293b; font-size: 0.95rem; font-weight: 700; display: flex; align-items: center; gap: 6px;">
+          📄 Carica la tua busta paga
+          <span class="bp-badge">Auto-compilazione</span>
+        </h3>
+        <span style="font-size: 0.72rem; color: #94a3b8;">Supporta PDF e immagini</span>
+      </div>
+
+      <div style="padding: 20px;">
+        <!-- Drop zone -->
+        <div class="bp-drop-zone" id="bpDropZone">
+          <input type="file" id="bpFileInput" accept=".pdf,.png,.jpg,.jpeg,.webp" onchange="handleBPFile(this.files[0])">
+          <div class="icon">📂</div>
+          <div class="title">Trascina qui la busta paga o clicca per selezionarla</div>
+          <div class="sub">PDF, PNG, JPG — i dati verranno estratti automaticamente</div>
+        </div>
+
+        <!-- Preview & extracted data -->
+        <div class="bp-preview" id="bpPreview">
+          <div class="bp-file-info">
+            <div class="file-icon" id="bpFileIcon">📄</div>
+            <div>
+              <div class="file-name" id="bpFileName">busta_paga.pdf</div>
+              <div class="file-meta" id="bpFileMeta">PDF • 45 KB</div>
+            </div>
+            <button class="bp-btn bp-btn-secondary" style="margin-left: auto;" onclick="resetBP()">🗑️ Rimuovi</button>
+          </div>
+
+          <div style="font-size: 0.8rem; font-weight: 600; color: #334155; margin-bottom: 10px;">📊 Dati estratti — verifica e modifica prima di compilare</div>
+
+          <div class="bp-extracted">
+            <div class="bp-field">
+              <div class="lbl">Salario mensile lordo</div>
+              <input type="number" id="bp-salario-mese" value="1890" step="10">
+            </div>
+            <div class="bp-field">
+              <div class="lbl">Salario annuo lordo</div>
+              <input type="number" id="bp-salario-anno" value="24570" step="100">
+            </div>
+            <div class="bp-field">
+              <div class="lbl">Contributo LPP mensile</div>
+              <input type="number" id="bp-lpp-mese" value="229.15" step="0.05">
+            </div>
+            <div class="bp-field">
+              <div class="lbl">Contributo LPP annuo</div>
+              <input type="number" id="bp-lpp-anno" value="2749.80" step="10">
+            </div>
+            <div class="bp-field">
+              <div class="lbl">Deduzione AVS/AI/IPG</div>
+              <input type="number" id="bp-avs" value="100.17" step="0.01">
+            </div>
+            <div class="bp-field">
+              <div class="lbl">Deduzione AD</div>
+              <input type="number" id="bp-ad" value="20.79" step="0.01">
+            </div>
+            <div class="bp-field">
+              <div class="lbl">Assic. malattia (CM)</div>
+              <input type="number" id="bp-cm" value="11.53" step="0.01">
+            </div>
+            <div class="bp-field">
+              <div class="lbl">Assic. infortuni (UVG)</div>
+              <input type="number" id="bp-uvg" value="21.11" step="0.01">
+            </div>
+          </div>
+
+          <div class="bp-ocr-hint">
+            <strong>💡 Come funziona:</strong> carica la busta paga e i valori vengono pre-compilati dai dati visibili. 
+            Verifica che corrispondano alla tua busta paga, poi clicca "Compila simulatore" per trasferire i dati nei campi sopra.
+            <br>Se il file è un'immagine o PDF non testuale, inserisci manualmente i valori nei campi sopra.
+          </div>
+
+          <div class="bp-actions">
+            <button class="bp-btn bp-btn-secondary" onclick="fillBPDefaults()">🔄 Ripristina valori demo</button>
+            <button class="bp-btn bp-btn-primary" onclick="applyBPToSimulator()">🚀 Compila il simulatore</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  
+
+
+  <div class="grid-3">
+    <!-- CARD 1: Dati personali (con ripartizione spostata qui) -->
+    <div class="card">
+      <h3>📋 Dati personali</h3>
+      <div class="form-group">
+        <label>Salario lordo annuo (CHF)</label>
+        <input type="number" id="salary" value="80000" min="0" step="1000" onchange="calculateLPP()">
+      </div>
+      <div class="grid-2-inner">
+        <div class="form-group">
+          <label>Età attuale</label>
+          <input type="number" id="currentAge" value="35" min="17" max="69" oninput="syncBirthYear(); calculateLPP()">
+        </div>
+        <div class="form-group">
+          <label>Anno di nascita</label>
+          <input type="number" id="birthYear" value="1991" min="1940" max="2009" oninput="syncAge(); calculateLPP()">
+        </div>
+      </div>
+      <div class="grid-2-inner">
+        <div class="form-group">
+          <label>Sesso</label>
+          <select id="gender" onchange="calculateLPP()">
+            <option value="M">Uomo</option>
+            <option value="F">Donna</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Capitale LPP attuale (CHF)</label>
+          <input type="number" id="currentCapital" value="50000" min="0" step="1000" onchange="calculateLPP()">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Ripartizione: quota dipendente (%)</label>
+        <input type="range" id="employeeShareSlider" min="0" max="100" value="50" step="5" style="width:100%" oninput="document.getElementById('employeeShare').value=this.value; calculateLPP()">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:3px;">
+          <span class="hint">0% (tutto datore)</span>
+          <input type="number" id="employeeShare" value="50" min="0" max="100" step="5" style="width:46px; text-align:center; padding:3px; border:1px solid #cbd5e1; border-radius:6px; font-size:0.85rem;" onchange="document.getElementById('employeeShareSlider').value=this.value; calculateLPP()">
+          <span class="hint">100% (tutto dip.)</span>
+        </div>
+        <div class="hint">Legge: minimo <strong>50%</strong> a carico del dipendente. Molti datori offrono <strong>60/40</strong>.</div>
+      </div>
+      <div class="form-group">
+        <label>Tasso di interesse atteso (%)</label>
+        <input type="number" id="interestRate" value="2.0" min="0" max="10" step="0.1" onchange="calculateLPP()">
+        <div class="hint">Minimo legale: <strong>1.25%</strong> | Stima conservativa: <strong>2.0%</strong></div>
+      </div>
+    </div>
+
+    <!-- CARD 2: Lacune (spostata prima delle opzioni) -->
+    <div class="card">
+      <h3>🕳️ Lacune previdenziali</h3>
+      <div class="form-group">
+        <label>Anni senza contributi AVS (dopo i 20 anni)</label>
+        <input type="number" id="lacuneAVS" value="0" min="0" max="44" step="0.5" onchange="calculateLPP()">
+        <div class="hint">Formazione, all'estero, altro. <strong>Non</strong> contare la disoccupazione (coperta ALV).</div>
+      </div>
+      <div class="form-group">
+        <label>Anni senza contributi LPP (dopo i 25 anni)</label>
+        <input type="number" id="lacuneLPP" value="" min="0" max="40" step="0.5" onchange="calculateLPP()">
+        <div class="hint">Se lasci vuoto, viene usato lo stesso valore AVS.</div>
+      </div>
+      <div class="form-group">
+        <label>Anni riscattati (AVS + LPP)</label>
+        <input type="number" id="anniRiscattati" value="0" min="0" max="44" step="0.5" onchange="calculateLPP()">
+        <div class="hint">Contributi volontari o riscatti effettuati/previsti.</div>
+      </div>
+      <div class="info-box">
+        <div class="text">
+          <strong>💡 Come funziona:</strong> ogni anno di lacuna non riscattato riduce la rendita AVS di circa il <strong>2.3%</strong> e il capitale LPP non cresce durante quegli anni.
+        </div>
+      </div>
+    </div>
+
+    <!-- CARD 3: Opzioni pensionamento (dopo lacune, età da 58) -->
+    <div class="card">
+      <h3>⚙️ Opzioni pensionamento</h3>
+      <div class="form-group">
+        <label>Età pensionamento desiderata</label>
+        <input type="range" id="retirementAgeSlider" min="58" max="70" value="65" style="width:100%" oninput="document.getElementById('retirementAge').value=this.value; calculateLPP()">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:3px;">
+          <span class="hint">58 (anticipo)</span>
+          <input type="number" id="retirementAge" value="65" min="58" max="70" style="width:46px; text-align:center; padding:3px; border:1px solid #cbd5e1; border-radius:6px; font-size:0.85rem;" onchange="document.getElementById('retirementAgeSlider').value=this.value; calculateLPP()">
+          <span class="hint">70 (rinvio)</span>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Erogazione in capitale (%)</label>
+        <input type="range" id="capitalPayoutSlider" min="0" max="100" value="25" step="5" style="width:100%" oninput="document.getElementById('capitalPayout').value=this.value; calculateLPP()">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:3px;">
+          <span class="hint">0%</span>
+          <input type="number" id="capitalPayout" value="25" min="0" max="100" step="5" style="width:46px; text-align:center; padding:3px; border:1px solid #cbd5e1; border-radius:6px; font-size:0.85rem;" onchange="document.getElementById('capitalPayoutSlider').value=this.value; calculateLPP()">
+          <span class="hint">100%</span>
+        </div>
+        <div class="hint">Minimo legale: <strong>25%</strong> per il matrimonio</div>
+      </div>
+      <div class="params-box">
+        <div class="title">📊 Parametri LPP 2026</div>
+        <div class="grid">
+          <div>Soglia: <strong>22'680</strong></div>
+          <div>Coord.: <strong>26'460</strong></div>
+          <div>Tetto: <strong>90'720</strong></div>
+          <div>Int. min: <strong>1.25%</strong></div>
+          <div>Conv. 65a: <strong>6.80%</strong></div>
+          <div>Coord. max: <strong>64'260</strong></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  
+
+  
+
+  
+
+
+  
+
+  <div id="capital-chart" style="margin-bottom: 20px;"></div>
+<div id="results" class="results"></div>
+
+  
+
+  <!-- ===== NUOVA SCHERMATA: INVALIDITÀ, MALATTIA, INFORTUNIO ===== -->
+  <div id="risk-scenarios" style="margin-bottom: 20px;">
+    
+
+    <div style="background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; margin-bottom: 20px;">
+      <h3 style="margin: 0 0 6px; color: #1e293b; font-size: 1.1rem; font-weight: 700;">🛡️ Copertura previdenziale: Invalidità, Malattia e Infortunio</h3>
+      <p style="margin: 0 0 16px; color: #64748b; font-size: 0.8rem;">Esplora come la previdenza professionale svizzera ti protegge in caso di eventi avversi. Seleziona uno scenario per vedere il flusso di copertura.</p>
+
+      <div class="risk-tabs">
+        <button class="risk-tab active" onclick="switchRiskTab('invalidita')">♿ Invalidità</button>
+        <button class="risk-tab" onclick="switchRiskTab('malattia')">🏥 Malattia</button>
+        <button class="risk-tab" onclick="switchRiskTab('infortunio')">⚠️ Infortunio</button>
+      </div>
+
+      <!-- INVALIDITÀ -->
+      <div id="risk-invalidita" class="risk-panel active">
+        <div class="risk-grid">
+          <div class="risk-card">
+            <h4><span class="badge badge-blue">1° Pilastro</span> AVS / AI</h4>
+            <p>In caso di <strong>invalidità permanente</strong>, l'AVS eroga una rendita di invalidità proporzionale agli anni di contribuzione. Se l'invalidità è totale (100%), la rendita equivale all'80% della rendita di vecchiaia maturata.</p>
+            <div class="risk-kpi-row">
+              <div class="risk-kpi"><div class="lbl">Rendita min. invalidità</div><div class="val">CHF 1'260</div><div class="sub">/mese (13x)</div></div>
+              <div class="risk-kpi"><div class="lbl">Rendita max. invalidità</div><div class="val">CHF 2'520</div><div class="sub">/mese (13x)</div></div>
+              <div class="risk-kpi"><div class="lbl">Invalidità totale</div><div class="val">80%</div><div class="sub">della rendita di vecchiaia</div></div>
+            </div>
+            <div class="scenario-calc">
+              <div class="row"><span>Rendita AVS maturata (mensile):</span><input type="number" id="ai-avs-base" value="2000" onchange="calcAI()"></div>
+              <div class="row"><span>Grado di invalidità (%):</span><input type="number" id="ai-grade" value="50" min="0" max="100" onchange="calcAI()"></div>
+              <div class="row total"><span>→ Rendita di invalidità stimata:</span><span id="ai-result" style="color:#1e40af; font-size:1rem;">CHF 800/mese</span></div>
+            </div>
+          </div>
+          <div class="risk-card">
+            <h4><span class="badge badge-green">2° Pilastro</span> LPP — Invalidità</h4>
+            <p>La cassa pensioni converte il <strong>capitale maturato</strong> in una rendita di invalidità. Se l'invalidità avviene prima dei 65 anni, il capitale viene calcolato <em>pro-rata</em> come se avessi lavorato fino alla pensione (clausola di proiezione).</p>
+            <div class="risk-kpi-row">
+              <div class="risk-kpi"><div class="lbl">Proiezione</div><div class="val">Sì</div><div class="sub">fino a 65 anni</div></div>
+              <div class="risk-kpi"><div class="lbl">Aliquota di conversione</div><div class="val">6.8%</div><div class="sub">standard</div></div>
+              <div class="risk-kpi"><div class="lbl">Erogazione capitale</div><div class="val">Max 25%</div><div class="sub">una tantum</div></div>
+            </div>
+            <div class="scenario-calc">
+              <div class="row"><span>Capitale previdenziale attuale:</span><input type="number" id="lpp-cap" value="50000" onchange="calcLPPInv()"></div>
+              <div class="row"><span>Età attuale:</span><input type="number" id="lpp-age" value="45" onchange="calcLPPInv()"></div>
+              <div class="row"><span>Salario coordinato:</span><input type="number" id="lpp-coord" value="50000" onchange="calcLPPInv()"></div>
+              <div class="row total"><span>→ Capitale proiettato:</span><span id="lpp-proj" style="color:#059669; font-size:1rem;">CHF 0</span></div>
+              <div class="row total" style="border:none; margin-top:2px;"><span>→ Rendita mensile stimata:</span><span id="lpp-rend" style="color:#059669; font-size:1rem;">CHF 0/mese</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- GRAFICO FLUSSO INVALIDITÀ -->
+        <div class="risk-card" style="margin-top: 16px;">
+          <h4>🔄 Flusso di copertura: Invalidità permanente</h4>
+          <svg viewBox="0 0 900 200" class="flow-svg" preserveAspectRatio="xMidYMid meet">
+            <defs>
+              <linearGradient id="gradBlue" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#3b82f6"/><stop offset="100%" stop-color="#60a5fa"/></linearGradient>
+              <linearGradient id="gradGreen" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#22c55e"/><stop offset="100%" stop-color="#4ade80"/></linearGradient>
+              <linearGradient id="gradRed" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#ef4444"/><stop offset="100%" stop-color="#f87171"/></linearGradient>
+              <marker id="arrowB" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 L2,3 Z" fill="#3b82f6"/></marker>
+              <marker id="arrowG" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 L2,3 Z" fill="#22c55e"/></marker>
+              <marker id="arrowR" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 L2,3 Z" fill="#ef4444"/></marker>
+            </defs>
+
+            <!-- Nodi -->
+            <rect x="20" y="70" width="130" height="60" rx="10" fill="url(#gradBlue)" class="flow-node"/>
+            <text x="85" y="95" text-anchor="middle" fill="white" font-size="11" font-weight="700">EVENTO</text>
+            <text x="85" y="112" text-anchor="middle" fill="white" font-size="9">Invalidità riconosciuta</text>
+
+            <rect x="220" y="30" width="150" height="60" rx="10" fill="url(#gradGreen)" class="flow-node"/>
+            <text x="295" y="55" text-anchor="middle" fill="white" font-size="11" font-weight="700">1° PILASTRO</text>
+            <text x="295" y="72" text-anchor="middle" fill="white" font-size="9">Rendita di invalidità (AVS)</text>
+
+            <rect x="220" y="110" width="150" height="60" rx="10" fill="url(#gradGreen)" class="flow-node"/>
+            <text x="295" y="135" text-anchor="middle" fill="white" font-size="11" font-weight="700">2° PILASTRO</text>
+            <text x="295" y="152" text-anchor="middle" fill="white" font-size="9">Rendita previdenziale proiettata</text>
+
+            <rect x="450" y="70" width="140" height="60" rx="10" fill="url(#gradRed)" class="flow-node"/>
+            <text x="520" y="95" text-anchor="middle" fill="white" font-size="11" font-weight="700">COPERTURA</text>
+            <text x="520" y="112" text-anchor="middle" fill="white" font-size="9">Totale mensile lorda</text>
+
+            <rect x="660" y="70" width="140" height="60" rx="10" fill="#f59e0b" class="flow-node"/>
+            <text x="730" y="95" text-anchor="middle" fill="white" font-size="11" font-weight="700">3° PILASTRO</text>
+            <text x="730" y="112" text-anchor="middle" fill="white" font-size="9">3° Pilastro (facoltativo)</text>
+
+            <!-- Frecce -->
+            <path d="M150 100 L220 60" stroke="#3b82f6" stroke-width="2" fill="none" marker-end="url(#arrowB)" class="flow-path"/>
+            <path d="M150 100 L220 140" stroke="#3b82f6" stroke-width="2" fill="none" marker-end="url(#arrowB)" class="flow-path"/>
+            <path d="M370 60 L450 100" stroke="#22c55e" stroke-width="2" fill="none" marker-end="url(#arrowG)" class="flow-path"/>
+            <path d="M370 140 L450 100" stroke="#22c55e" stroke-width="2" fill="none" marker-end="url(#arrowG)" class="flow-path"/>
+            <path d="M590 100 L660 100" stroke="#ef4444" stroke-width="2" fill="none" marker-end="url(#arrowR)" class="flow-path"/>
+            <path d="M730 130 L730 160 L520 160 L520 130" stroke="#f59e0b" stroke-width="1.5" fill="none" stroke-dasharray="4,3" opacity="0.6"/>
+            <text x="625" y="175" text-anchor="middle" class="flow-label" fill="#d97706" font-size="9" font-weight="600">Complementare</text>
+
+            <!-- Labels flusso -->
+            <text x="185" y="55" class="flow-label" font-size="9">Grado di invalidità</text>
+            <text x="185" y="155" class="flow-label" font-size="9">Capitale proiettato</text>
+            <text x="410" y="85" class="flow-label" font-size="9">Somma 1°+2°</text>
+            <text x="625" y="95" class="flow-label" font-size="9">Se insufficiente</text>
+          </svg>
+        </div>
+      </div>
+
+      <!-- MALATTIA -->
+      <div id="risk-malattia" class="risk-panel">
+        <div class="risk-grid">
+          <div class="risk-card">
+            <h4><span class="badge badge-yellow">Durata</span> Mantenimento contributi previdenziali</h4>
+            <p>Durante la malattia, il datore di lavoro continua a versare i contributi LPP per almeno i primi <strong>2 anni</strong> (secondo la legge). Dopo questo periodo, la copertura può variare in base al regolamento della cassa pensioni.</p>
+            <div class="risk-kpi-row">
+              <div class="risk-kpi"><div class="lbl">Periodo minimo</div><div class="val">24 mesi</div><div class="sub">contributi garantiti</div></div>
+              <div class="risk-kpi"><div class="lbl">Salario assicurato</div><div class="val">80%</div><div class="sub">dalla Cassa Malati</div></div>
+              <div class="risk-kpi"><div class="lbl">Contributi LPP</div><div class="val">Sì</div><div class="sub">per 2 anni</div></div>
+            </div>
+            <div class="scenario-calc">
+              <div class="row"><span>Mesi di malattia:</span><input type="number" id="mal-mesi" value="18" min="0" max="60" onchange="calcMalattia()"></div>
+              <div class="row"><span>Contributo annuo LPP:</span><input type="number" id="mal-contrib" value="5000" onchange="calcMalattia()"></div>
+              <div class="row"><span>Tasso interesse:</span><input type="number" id="mal-rate" value="2" step="0.1" onchange="calcMalattia()"></div>
+              <div class="row total"><span>→ Capitale perso (stima):</span><span id="mal-perso" style="color:#dc2626; font-size:1rem;">CHF 0</span></div>
+              <div class="row total" style="border:none; margin-top:2px;"><span>→ Copertura sicura:</span><span id="mal-copertura" style="color:#059669; font-size:1rem;">Sì (entro 24 mesi)</span></div>
+            </div>
+          </div>
+          <div class="risk-card">
+            <h4><span class="badge badge-red">Dopo 24 mesi</span> Cosa succede dopo?</h4>
+            <p>Se la malattia supera i 2 anni, la cassa pensioni può sospendere i contributi. Il capitale maturato <strong>resta congelato</strong> e continua a fruttare interessi, ma non cresce più con nuovi versamenti. Al rientro, i contributi riprendono.</p>
+            <div class="risk-kpi-row">
+              <div class="risk-kpi"><div class="lbl">Capitale</div><div class="val">Bloccato</div><div class="sub">ma con interessi</div></div>
+              <div class="risk-kpi"><div class="lbl">Rientro</div><div class="val">Ripresa</div><div class="sub">contributi attivi</div></div>
+              <div class="risk-kpi"><div class="lbl">Lacuna</div><div class="val">Possibile</div><div class="sub">da valutare</div></div>
+            </div>
+            <p style="margin-top:10px; font-size:0.72rem; color:#64748b;"><strong>💡 Consiglio:</strong> verifica nel regolamento della tua cassa pensioni se prevede un'estensione oltre i 24 mesi. Alcune casse offrono copertura prolungata fino a 3-5 anni.</p>
+          </div>
+        </div>
+
+        <!-- GRAFICO FLUSSO MALATTIA -->
+        <div class="risk-card" style="margin-top: 16px;">
+          <h4>🔄 Flusso temporale: Malattia e contributi previdenziali</h4>
+          <svg viewBox="0 0 900 180" class="flow-svg" preserveAspectRatio="xMidYMid meet">
+            <!-- Timeline -->
+            <line x1="50" y1="90" x2="850" y2="90" stroke="#e2e8f0" stroke-width="3" stroke-linecap="round"/>
+
+            <!-- Mesi markers -->
+            <circle cx="50" cy="90" r="6" fill="#3b82f6"/>
+            <text x="50" y="115" text-anchor="middle" class="flow-label" font-size="9" font-weight="600">Inizio malattia</text>
+
+            <circle cx="300" cy="90" r="6" fill="#22c55e"/>
+            <text x="300" y="115" text-anchor="middle" class="flow-label" font-size="9" font-weight="600">6 mesi</text>
+            <text x="300" y="130" text-anchor="middle" class="flow-label" font-size="8" fill="#22c55e">Contributi ✓</text>
+
+            <circle cx="550" cy="90" r="8" fill="#f59e0b"/>
+            <text x="550" y="115" text-anchor="middle" class="flow-label" font-size="9" font-weight="600">12 mesi</text>
+            <text x="550" y="130" text-anchor="middle" class="flow-label" font-size="8" fill="#d97706">Contributi ✓</text>
+
+            <circle cx="750" cy="90" r="10" fill="#ef4444" stroke="white" stroke-width="2"/>
+            <text x="750" y="115" text-anchor="middle" class="flow-label" font-size="9" font-weight="600">24 mesi</text>
+            <text x="750" y="130" text-anchor="middle" class="flow-label" font-size="8" fill="#dc2626">Soglia critica</text>
+
+            <!-- Box contributi attivi -->
+            <rect x="50" y="40" width="700" height="28" rx="6" fill="#dcfce7" stroke="#22c55e" stroke-width="1"/>
+            <text x="400" y="58" text-anchor="middle" fill="#166534" font-size="10" font-weight="700">CONTRIBUTI PREVIDENZIALI ATTIVI (minimo legale)</text>
+
+            <!-- Box post 24 mesi -->
+            <rect x="760" y="40" width="100" height="28" rx="6" fill="#fee2e2" stroke="#ef4444" stroke-width="1"/>
+            <text x="810" y="58" text-anchor="middle" fill="#991b1b" font-size="9" font-weight="700">A RISCHIO</text>
+
+            <!-- Indicatore salario -->
+            <text x="50" y="160" text-anchor="start" class="flow-label" font-size="9">Salario percepito: <tspan fill="#1e40af" font-weight="700">80-100%</tspan> (Cassa Malati) → dopo 2 anni: <tspan fill="#dc2626" font-weight="700">indennità di invalidità</tspan></text>
+          </svg>
+        </div>
+      </div>
+
+      <!-- INFORTUNIO -->
+      <div id="risk-infortunio" class="risk-panel">
+        <div class="risk-grid">
+          <div class="risk-card">
+            <h4><span class="badge badge-red">Assicurazione Infortuni</span> Infortunio sul lavoro</h4>
+            <p>In caso di infortunio professionale o malattia professionale, l'<strong>assicurazione contro gli infortuni</strong> copre il salario fino all'80% (max CHF 148'200/anno). I contributi LPP <strong>continuano</strong> a essere versati dal datore di lavoro durante l'indennità giornaliera.</p>
+            <div class="risk-kpi-row">
+              <div class="risk-kpi"><div class="lbl">Copertura salario</div><div class="val">80%</div><div class="sub">Assicurazione Infortuni</div></div>
+              <div class="risk-kpi"><div class="lbl">Contributi LPP</div><div class="val">Continuano</div><div class="sub">durante indennità</div></div>
+              <div class="risk-kpi"><div class="lbl">Invalidità da infortunio</div><div class="val">Rendita per infortunio</div><div class="sub">+ LPP proiettata</div></div>
+            </div>
+            <div class="scenario-calc">
+              <div class="row"><span>Salario annuo lordo:</span><input type="number" id="inf-salary" value="80000" onchange="calcInfortunio()"></div>
+              <div class="row"><span>Grado di invalidità da infortunio (%):</span><input type="number" id="inf-grade" value="30" min="0" max="100" onchange="calcInfortunio()"></div>
+              <div class="row total"><span>→ Indennità per infortunio mensile:</span><span id="inf-indennita" style="color:#1e40af; font-size:1rem;">CHF 0/mese</span></div>
+              <div class="row total" style="border:none; margin-top:2px;"><span>→ Rendita di invalidità da infortunio:</span><span id="inf-rendita" style="color:#dc2626; font-size:1rem;">CHF 0/mese</span></div>
+            </div>
+          </div>
+          <div class="risk-card">
+            <h4><span class="badge badge-blue">Previdenza Professionale + Infortuni</span> Interazione tra pilastri</h4>
+            <p>Se l'infortunio causa invalidità permanente, hai diritto a <strong>due rendite</strong>: quella per infortunio (calcolata sul salario assicurato) e quella LPP (capitale proiettato). La rendita per infortunio non riduce la rendita LPP: si sommano.</p>
+            <div class="risk-kpi-row">
+              <div class="risk-kpi"><div class="lbl">Rendita per infortunio</div><div class="val">Fino a 90%</div><div class="sub">salario assicurato</div></div>
+              <div class="risk-kpi"><div class="lbl">Rendita previdenziale</div><div class="val">6.8%</div><div class="sub">capitale proiettato</div></div>
+              <div class="risk-kpi"><div class="lbl">Totale potenziale</div><div class="val">~70-90%</div><div class="sub">del salario netto</div></div>
+            </div>
+            <p style="margin-top:10px; font-size:0.72rem; color:#64748b;"><strong>⚠️ Nota:</strong> se l'infortunio avviene fuori dal lavoro (es. sport, casa), l'assicurazione infortuni non copre. In quel caso entra in gioco la Cassa Malati per i primi 2 anni, poi l'AI. I contributi LPP possono essere a rischio dopo 24 mesi.</p>
+          </div>
+        </div>
+
+        <!-- GRAFICO FLUSSO INFORTUNIO -->
+        <div class="risk-card" style="margin-top: 16px;">
+          <h4>🔄 Flusso di copertura: Infortunio con invalidità permanente</h4>
+          <svg viewBox="0 0 900 240" class="flow-svg" preserveAspectRatio="xMidYMid meet">
+            <defs>
+              <linearGradient id="gradInfortuni" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#ef4444"/><stop offset="100%" stop-color="#f87171"/></linearGradient>
+              <linearGradient id="gradLPP2" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#22c55e"/><stop offset="100%" stop-color="#4ade80"/></linearGradient>
+              <linearGradient id="gradTot" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#7c3aed"/><stop offset="100%" stop-color="#a78bfa"/></linearGradient>
+            </defs>
+
+            <!-- Evento -->
+            <rect x="20" y="90" width="120" height="60" rx="10" fill="url(#gradRed)" class="flow-node"/>
+            <text x="80" y="115" text-anchor="middle" fill="white" font-size="11" font-weight="700">INFORTUNIO</text>
+            <text x="80" y="132" text-anchor="middle" fill="white" font-size="9">Sul lavoro</text>
+
+            <!-- Branching -->
+            <path d="M140 120 L180 120" stroke="#ef4444" stroke-width="2" fill="none" marker-end="url(#arrowR)"/>
+
+            <!-- Ramo Infortuni -->
+            <rect x="200" y="40" width="140" height="60" rx="10" fill="url(#gradInfortuni)" class="flow-node"/>
+            <text x="270" y="65" text-anchor="middle" fill="white" font-size="11" font-weight="700">Assicurazione Infortuni</text>
+            <text x="270" y="82" text-anchor="middle" fill="white" font-size="9">Indennità giornaliera</text>
+            <text x="270" y="94" text-anchor="middle" fill="white" font-size="8">80% del salario</text>
+
+            <path d="M340 70 L390 70 L390 110 L440 110" stroke="#ef4444" stroke-width="2" fill="none" marker-end="url(#arrowR)" class="flow-path"/>
+            <text x="365" y="62" text-anchor="middle" class="flow-label" font-size="8">In caso di invalidità</text>
+
+            <!-- LPP branch -->
+            <rect x="200" y="140" width="140" height="60" rx="10" fill="url(#gradLPP2)" class="flow-node"/>
+            <text x="270" y="165" text-anchor="middle" fill="white" font-size="11" font-weight="700">Previdenza Professionale</text>
+            <text x="270" y="182" text-anchor="middle" fill="white" font-size="9">Contributi attivi</text>
+            <text x="270" y="194" text-anchor="middle" fill="white" font-size="8">Proiezione del capitale</text>
+
+            <path d="M340 170 L390 170 L390 130 L440 130" stroke="#22c55e" stroke-width="2" fill="none" marker-end="url(#arrowG)" class="flow-path"/>
+            <text x="365" y="185" text-anchor="middle" class="flow-label" font-size="8">Capitale maturato</text>
+
+            <!-- Merge -->
+            <rect x="460" y="80" width="140" height="80" rx="10" fill="url(#gradTot)" class="flow-node"/>
+            <text x="530" y="108" text-anchor="middle" fill="white" font-size="12" font-weight="700">TOTALE</text>
+            <text x="530" y="126" text-anchor="middle" fill="white" font-size="9">Rendita per infortunio</text>
+            <text x="530" y="140" text-anchor="middle" fill="white" font-size="9">+ Rendita previdenziale</text>
+
+            <path d="M600 120 L650 120" stroke="#7c3aed" stroke-width="2" fill="none" marker-end="url(#arrowR)" class="flow-path"/>
+
+            <!-- Risultato -->
+            <rect x="670" y="70" width="160" height="100" rx="10" fill="#f8fafc" stroke="#e2e8f0" stroke-width="2"/>
+            <text x="750" y="95" text-anchor="middle" fill="#1e293b" font-size="11" font-weight="700">PROTEZIONE</text>
+            <text x="750" y="112" text-anchor="middle" fill="#475569" font-size="9">~70-90% del reddito</text>
+            <text x="750" y="128" text-anchor="middle" fill="#475569" font-size="9">Copertura previdenziale</text>
+            <text x="750" y="144" text-anchor="middle" fill="#475569" font-size="9">+ Assicurazione Infortuni</text>
+            <text x="750" y="160" text-anchor="middle" fill="#7c3aed" font-size="10" font-weight="700">+ 3° Pilastro</text>
+
+            <!-- Nota fuori lavoro -->
+            <rect x="200" y="220" width="500" height="20" rx="6" fill="#fef3c7" stroke="#fbbf24" stroke-width="1"/>
+            <text x="450" y="234" text-anchor="middle" fill="#92400e" font-size="9" font-weight="600">⚠️ Fuori dal lavoro: nessuna assicurazione infortuni → copertura malattia per 2 anni, poi AI. Contributi LPP a rischio dopo 24 mesi.</text>
+          </svg>
+        </div>
+      </div>
+    </div>
+
+    
+  </div>
+
+  <div class="warning-box">
+    <div class="title">⚠️ Disclaimer</div>
+    <div class="text">
+      Simulatore basato sui parametri legali minimi LPP e AVS 2026 (13a mensilità inclusa). Ogni cassa pensioni può applicare condizioni più favorevoli. I calcoli sulle lacune sono indicativi: la rendita AVS reale dipende anche dal reddito medio e dagli accrediti per compiti educativi/assistenziali. Non sostituisce una consulenza previdenziale personalizzata.
+    </div>
+  </div>
+</div>
+
+
+
+  <script src="script.js"></script>
+</body>
+</html>
